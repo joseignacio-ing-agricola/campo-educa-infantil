@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+const root='dist';
+const html=fs.readFileSync(root+'/clase-gratis.html','utf8'),home=fs.readFileSync(root+'/index.html','utf8');
+const script=html.match(/<script>([\s\S]*)<\/script>/)[1];new vm.Script(script);
+const course=JSON.parse(script.match(/const course=([\s\S]*?),initial=/)[1]);assert.equal(course.id,'infantil-mini-huerta');assert.equal(course.lessons.length,1);assert.equal(course.lessons[0].videoNarration.length,3);assert(html.includes('SIN REGISTRO'));assert(html.includes('parentOrigin=location.origin'));assert(!html.includes('config.js'));assert(home.includes('clase-gratis.html'));assert(!home.includes('· PROPUESTA'));assert(!home.includes('Catálogo infantil propuesto'));
+for(const name of ['style.css','reader.css'])assert(!fs.readFileSync(root+'/'+name,'utf8').includes('fonts.googleapis.com'));
+for(const picture of ['jardin-exploradores','aventuras','broti','pasos-huerta','pasos-naturaleza','pasos-agua'])assert(fs.existsSync(root+'/imagenes/'+picture+'.webp'));
+console.log('PASS: muestra pública de una lección, sin configuración de cuentas, CTA comercial y recursos optimizados.');

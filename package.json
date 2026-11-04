@@ -1,1 +1,8 @@
-{"private":true,"type":"module"}
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node tests/progress-sync.test.mjs && node tests/admin-dashboard.test.mjs && node tests/free-lesson.test.mjs"
+  },
+  "name": "campo-educa-infantil"
+}

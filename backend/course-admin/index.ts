@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
 const url=Deno.env.get('SUPABASE_URL')!;
 const service=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false}});
 Deno.serve(async req=>{
@@ -17,6 +17,10 @@ Deno.serve(async req=>{
   const {data:auth,error:authError}=await service.auth.getUser(bearer.slice(7));if(authError||!auth.user)return reply({error:'Sesión no válida.'},401);
   const {data:admin,error:roleError}=await service.from('course_admins').select('user_id').eq('user_id',auth.user.id).maybeSingle();if(roleError||!admin)return reply({error:'Solo el encargado puede administrar alumnos.'},403);
   const body=await req.json();
+  const infantPortal=requestOrigin==='https://campo-educa-infantil.farias-l-jose95.workers.dev';
+  if(infantPortal&&body.action==='delete_user')return reply({error:'Las cuentas son compartidas. Desde el portal infantil solo puedes retirar una matrícula infantil.'},403);
+  if(infantPortal&&body.action==='set_access'&&!/^infantil-[a-z0-9-]+$/.test(String(body.course_id||'')))return reply({error:'Selecciona un curso infantil.'},400);
+  if(infantPortal&&body.action==='create_user'&&(!Array.isArray(body.courses)||body.courses.some((id:unknown)=>typeof id!=='string'||!/^infantil-[a-z0-9-]+$/.test(id))))return reply({error:'Este portal solo registra matrículas infantiles.'},400);
   function expiry(){
    const unit=body.duration_unit||'unlimited';if(unit==='unlimited')return null;
    const amount=body.duration_amount;
@@ -59,4 +63,5 @@ Deno.serve(async req=>{
   return reply({error:'Acción no reconocida.'},400);
  }catch(_){return reply({error:'No se pudo completar la operación. Revisa la configuración del servidor.'},500);}
 });
+
 

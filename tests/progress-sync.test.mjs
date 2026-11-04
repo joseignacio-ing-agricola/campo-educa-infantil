@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {createProgressSync,completedLessons,mergeProgress} from '../dist/progress-sync.js';
+const memory=new Map(),storage={getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
+let online=false,sends=[],statuses=[];
+const send=async(course,patch,user)=>{if(!online)throw Error('offline');sends.push({course,patch,user});};
+let sync=createProgressSync({storage,send,onStatus:s=>statuses.push(s)});sync.setUser('family-a');sync.enqueue('infantil-mini-huerta',{'agro-course-done':'[0]'});assert.equal(await sync.flush(),false);assert(memory.size);
+sync=createProgressSync({storage,send});sync.setUser('family-b');assert.equal(sync.count(),0);sync.setUser('family-a');assert.equal(sync.getPending('infantil-mini-huerta')['agro-course-done'],'[0]');online=true;assert.equal(await sync.flush(),true);assert.equal(memory.size,0);assert.equal(sends[0].user,'family-a');
+let release;const gate=new Promise(r=>release=r);let calls=0;const concurrent=createProgressSync({storage,send:async()=>{calls++;await gate;}});concurrent.setUser('family-a');concurrent.enqueue('infantil-mini-huerta',{'agro-course-done':'[0]'});const saving=concurrent.flush();concurrent.enqueue('infantil-mini-huerta',{'agro-course-done':'[0,1]'});release();await saving;assert.equal(concurrent.getPending('infantil-mini-huerta')['agro-course-done'],'[0,1]');assert.equal(await concurrent.flush(),true);assert.equal(calls,2);
+const isolated=createProgressSync({storage,send:async()=>{await gate;}});isolated.setUser('family-a');isolated.enqueue('infantil-mini-huerta',{'agro-last-lesson':'2'});const old=isolated.flush();isolated.setUser('family-b');isolated.enqueue('infantil-detectives',{'agro-last-lesson':'1'});await old;assert.equal(isolated.getPending('infantil-detectives')['agro-last-lesson'],'1');assert.equal(isolated.enqueue('adult-course',{'agro-last-lesson':'1'}),false);
+const broken=createProgressSync({storage:{getItem:()=>null,setItem:()=>{throw Error('quota');},removeItem(){}},send,onStatus:s=>statuses.push(s)});broken.setUser('family-a');broken.enqueue('infantil-mini-huerta',{'agro-last-lesson':'0'});assert.equal(statuses.at(-1).persisted,false);
+assert.deepEqual(completedLessons({'agro-course-done':'[0,0,2,99,-1,"3"]'}),[0,2]);assert.deepEqual(mergeProgress({x:'server'},{x:'pending'}),{x:'pending'});
+assert.deepEqual(JSON.parse(mergeProgress({'agro-course-done':'[1,2]'},{'agro-course-done':'[0,1]'})['agro-course-done']),[0,1,2]);
+console.log('PASS: recuperación tras cierre, cuentas aisladas, reintento, cambios durante guardado y fallo de almacenamiento.');

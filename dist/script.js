@@ -1,0 +1,1 @@
+document.querySelectorAll('.whatsapp').forEach(link=>{const message=`Hola, soy un adulto responsable y me interesa ${link.dataset.topic}. ¿Me pueden orientar y confirmar qué está disponible para niños?`;link.href='https://wa.me/56977884978?text='+encodeURIComponent(message);link.target='_blank';link.rel='noopener noreferrer'});
